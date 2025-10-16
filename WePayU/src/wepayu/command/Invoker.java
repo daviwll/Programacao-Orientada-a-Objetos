@@ -43,7 +43,7 @@ public class Invoker {
             throw new Exception("Nao ha comando a refazer.");
         }
         Command command = redoStack.pop();
-        command.execute();
+        command.redo();
         undoStack.push(command);
     }
 

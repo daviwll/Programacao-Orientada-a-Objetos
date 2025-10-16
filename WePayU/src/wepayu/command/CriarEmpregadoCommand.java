@@ -7,41 +7,24 @@ import wepayu.services.Sistema;
  * Comando para criar um empregado no sistema.
  * Permite execução, undo e redo.
  */
-public class CriarEmpregadoCommand implements Command {
+/**
+ * Comando para criar um empregado no sistema.
+ * Usa SnapshotCommand para suportar undo/redo via mementos.
+ */
+public class CriarEmpregadoCommand extends SnapshotCommand {
 
-    private Sistema sistema;
-    private String name;
-    private String endereco;
-    private String tipo;
-    private String salario;
-    private String comissao;
-    private Empregado empregadoCriado;
+    private final String name;
+    private final String endereco;
+    private final String tipo;
+    private final String salario;
+    private final String comissao;
 
-    /**
-     * Construtor para empregado horista ou assalariado.
-     *
-     * @param sistema Instância do Sistema
-     * @param name Nome do empregado
-     * @param endereco Endereço do empregado
-     * @param tipo Tipo do empregado (horista/assalariado)
-     * @param salario Salário do empregado
-     */
     public CriarEmpregadoCommand(Sistema sistema, String name, String endereco, String tipo, String salario) {
         this(sistema, name, endereco, tipo, salario, null);
     }
 
-    /**
-     * Construtor para empregado comissionado ou outros tipos.
-     *
-     * @param sistema Instância do Sistema
-     * @param name Nome do empregado
-     * @param endereco Endereço do empregado
-     * @param tipo Tipo do empregado
-     * @param salario Salário do empregado
-     * @param comissao Percentual de comissão (opcional)
-     */
     public CriarEmpregadoCommand(Sistema sistema, String name, String endereco, String tipo, String salario, String comissao) {
-        this.sistema = sistema;
+        super(sistema);
         this.name = name;
         this.endereco = endereco;
         this.tipo = tipo;
@@ -50,24 +33,11 @@ public class CriarEmpregadoCommand implements Command {
     }
 
     @Override
-    public void execute() throws Exception {
-        if (this.empregadoCriado == null) {
-            String id;
-            if (this.comissao == null) {
-                id = sistema.criarEmpregado(this.name, this.endereco, this.tipo, this.salario);
-            } else {
-                id = sistema.criarEmpregado(this.name, this.endereco, this.tipo, this.salario, this.comissao);
-            }
-            this.empregadoCriado = sistema.getEmpregado(id);
+    protected void doExecute() throws Exception {
+        if (comissao == null) {
+            sistema.criarEmpregado(name, endereco, tipo, salario);
         } else {
-            sistema.addEmpregado(this.empregadoCriado);
-        }
-    }
-
-    @Override
-    public void undo() throws Exception {
-        if (this.empregadoCriado != null) {
-            sistema.removerEmpregado(this.empregadoCriado.getId());
+            sistema.criarEmpregado(name, endereco, tipo, salario, comissao);
         }
     }
 }

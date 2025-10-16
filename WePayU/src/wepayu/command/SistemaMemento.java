@@ -2,6 +2,7 @@ package wepayu.command;
 
 import wepayu.models.Empregado;
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Implementa o "Memento" para a classe {@link wepayu.services.Sistema}.
@@ -26,8 +27,8 @@ public class SistemaMemento {
      * @param empregados A lista de empregados a ser salva.
      * @param id O valor atual do contador de IDs a ser salvo.
      */
-    public SistemaMemento(ArrayList<Empregado> empregados, int id) {
-        this.empregadosState = new ArrayList<>();
+    public SistemaMemento(java.util.List<Empregado> empregados, int id) {
+        this.empregadosState = new java.util.ArrayList<>(empregados.size());
         for (Empregado e : empregados) {
             this.empregadosState.add(e.clone());
         }
@@ -39,8 +40,12 @@ public class SistemaMemento {
      *
      * @return Uma {@link ArrayList} contendo os empregados do estado salvo.
      */
-    public ArrayList<Empregado> getEmpregadosState() {
-        return empregadosState;
+    public List<Empregado> getEmpregadosState() {
+        List<Empregado> copia = new ArrayList<>(empregadosState.size());
+        for (Empregado e : empregadosState) {
+            copia.add(e.clone());
+        }
+        return copia;
     }
 
     /**

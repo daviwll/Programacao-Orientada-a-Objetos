@@ -13,7 +13,7 @@ import java.util.ArrayList;
  */
 public class Comissionado extends Assalariado implements Cloneable {
     private double comissao;
-    private ArrayList<ResultadoDeVenda> listaVendass;
+    private ArrayList<ResultadoDeVenda> listaVendas;
 
     /**
      * Constrói uma nova instância de Empregado Comissionado.
@@ -28,7 +28,7 @@ public class Comissionado extends Assalariado implements Cloneable {
     public Comissionado(String name, String endereco, String id, double salarioMensal, double comissao, String tipo) {
         super(name, endereco, id, salarioMensal, tipo);
         this.comissao = comissao;
-        this.listaVendass = new ArrayList<>();
+        this.listaVendas = new ArrayList<>();
     }
 
     /**
@@ -40,9 +40,9 @@ public class Comissionado extends Assalariado implements Cloneable {
     @Override
     public Comissionado clone() {
         Comissionado cloned = (Comissionado) super.clone();
-        cloned.listaVendass = new ArrayList<>();
-        for (ResultadoDeVenda v : this.listaVendass) {
-            cloned.listaVendass.add(v.clone());
+        cloned.listaVendas = new ArrayList<>();
+        for (ResultadoDeVenda v : this.listaVendas) {
+            cloned.listaVendas.add(v.clone());
         }
         return cloned;
     }
@@ -62,7 +62,7 @@ public class Comissionado extends Assalariado implements Cloneable {
      * @return Uma {@link ArrayList} contendo os objetos {@link ResultadoDeVenda}.
      */
     public ArrayList<ResultadoDeVenda> getListaVendas() {
-        return listaVendass;
+        return listaVendas;
     }
 
     /**
@@ -80,7 +80,7 @@ public class Comissionado extends Assalariado implements Cloneable {
      * @param venda O objeto {@link ResultadoDeVenda} a ser adicionado.
      */
     public void addVenda(ResultadoDeVenda venda) {
-        this.listaVendass.add(venda);
+        this.listaVendas.add(venda);
     }
 
     /**
@@ -90,8 +90,8 @@ public class Comissionado extends Assalariado implements Cloneable {
      * @see #removeVendaEspecifica(ResultadoDeVenda)
      */
     public void removeVenda() {
-        if (!listaVendass.isEmpty()) {
-            this.listaVendass.remove(listaVendass.size() - 1);
+        if (!listaVendas.isEmpty()) {
+            this.listaVendas.remove(listaVendas.size() - 1);
         }
     }
 
@@ -102,17 +102,17 @@ public class Comissionado extends Assalariado implements Cloneable {
      * @param venda O objeto {@link ResultadoDeVenda} exato a ser removido.
      */
     public void removeVendaEspecifica(ResultadoDeVenda venda) {
-        if (venda == null || listaVendass.isEmpty()) return;
+        if (venda == null || listaVendas.isEmpty()) return;
 
-        for (int i = 0; i < listaVendass.size(); i++) {
-            if (listaVendass.get(i) == venda) {
-                listaVendass.remove(i);
+        for (int i = 0; i < listaVendas.size(); i++) {
+            if (listaVendas.get(i) == venda) {
+                listaVendas.remove(i);
                 return;
             }
         }
-        for (int i = 0; i < listaVendass.size(); i++) {
-            if (listaVendass.get(i).equals(venda)) {
-                listaVendass.remove(i);
+        for (int i = 0; i < listaVendas.size(); i++) {
+            if (listaVendas.get(i).equals(venda)) {
+                listaVendas.remove(i);
                 return;
             }
         }

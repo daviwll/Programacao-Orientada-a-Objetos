@@ -2,29 +2,36 @@ package wepayu.command;
 
 import wepayu.services.Sistema;
 
-// antes:
-// private Invoker invoker;
-// private InvokerMemento invokerMemento;
+/**
+ * Comando para zerar os dados do sistema.
+ *
+ * <p>Este comando limpa somente os dados internos do {@link Sistema} (empregados, cartões,
+ * vendas, taxas etc.), preservando o histórico de undo/redo do {@link Invoker} externo.
+ * A captura/restauração do estado para undo/redo é gerenciada por {@link SnapshotCommand}.</p>
+ *
+ * @since US08
+ */
+public class ZerarSistemaCommand extends SnapshotCommand {
 
-public class ZerarSistemaCommand implements Command {
-    private final Sistema sistema;
-    private SistemaMemento sistemaMemento;
-
+    /**
+     * Cria o comando de zerar sistema.
+     *
+     * @param sistema instância do sistema (não {@code null})
+     */
     public ZerarSistemaCommand(Sistema sistema) {
-        this.sistema = sistema;
+        super(sistema);
     }
 
+    /**
+     * Executa a limpeza dos dados internos do sistema.
+     *
+     * <p>Não altera as pilhas do invocador; o snapshot feito por {@link SnapshotCommand}
+     * permite desfazer/refazer o estado do sistema após a limpeza.</p>
+     *
+     * @throws Exception se ocorrer erro durante a limpeza
+     */
     @Override
-    public void execute() throws Exception {
-        this.sistemaMemento = sistema.save();  // snapshot do estado anterior
-        sistema.zerarDadosInternos();          // limpa APENAS os dados do sistema
-        // não mexe em undo/redo do Invoker
-    }
-
-    @Override
-    public void undo() throws Exception {
-        sistema.restore(this.sistemaMemento);  // restaura só o sistema
-        // não mexe em undo/redo do Invoker
+    protected void doExecute() throws Exception {
+        sistema.zerarDadosInternos();
     }
 }
-

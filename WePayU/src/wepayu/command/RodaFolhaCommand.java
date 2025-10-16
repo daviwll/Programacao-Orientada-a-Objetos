@@ -1,84 +1,48 @@
 package wepayu.command;
 
-import wepayu.models.Empregado;
-import wepayu.models.MembroSindicato;
 import wepayu.services.Sistema;
 
-import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.Map;
-
 /**
- * Comando para executar a folha de pagamento para uma data específica.
- * <p>
- * Esta classe encapsula a ação de rodar a folha, que é uma operação que
- * modifica o estado do sistema (ex: a dívida sindical de um horista).
- * Ela permite que a operação seja desfeita (undo), restaurando o estado
- * dos empregados para como estavam antes do pagamento.
+ * Comando responsável por rodar a folha de pagamento para uma data específica.
  *
- * @see Command
- * @see Sistema
+ * <p>A captura de estado anterior/posterior (para suportar undo/redo) é feita por
+ * {@link SnapshotCommand}, que chama {@code sistema.save()} antes e depois da execução
+ * e restaura com {@code sistema.restore(...)} quando necessário.</p>
+ *
+ * <p>Este comando delega a operação para {@link Sistema#rodaFolha(String, String)}.</p>
+ *
+ * @since US07/US08
+ * @see SnapshotCommand
+ * @see Sistema#rodaFolha(String, String)
  */
-public class RodaFolhaCommand implements Command {
-    private Sistema sistema;
-    private String data;
-    private String saida;
-    private Map<String, Double> dividasAnteriores;
-    private Map<String, LocalDate> ultimosPagamentosAnteriores;
+public class RodaFolhaCommand extends SnapshotCommand {
+
+    private final String data;
+    private final String saida;
 
     /**
-     * Constrói o comando para rodar a folha de pagamento.
+     * Cria um comando para processar a folha de pagamento em uma data, gerando o arquivo de saída.
      *
-     * @param sistema A instância do sistema onde a operação será executada.
-     * @param data A data para a qual a folha deve ser rodada (ex: "dd/MM/yyyy").
-     * @param saida O caminho do arquivo onde o resultado da folha será salvo.
+     * @param sistema instância do sistema onde a folha será processada (não {@code null})
+     * @param data data de referência no formato {@code d/M/uuuu}
+     * @param saida caminho/arquivo de saída a ser escrito
+     *
+     * @throws NullPointerException se {@code sistema} for {@code null}
      */
     public RodaFolhaCommand(Sistema sistema, String data, String saida) {
-        this.sistema = sistema;
+        super(sistema);
         this.data = data;
         this.saida = saida;
-        this.dividasAnteriores = new HashMap<>();
-        this.ultimosPagamentosAnteriores = new HashMap<>();
     }
 
     /**
-     * Executa o processamento da folha de pagamento.
-     * <p>
-     * Antes de rodar a folha, salva o estado relevante dos membros do sindicato
-     * (dívida sindical e data do último pagamento) para permitir que a ação seja desfeita.
+     * Executa o processamento da folha de pagamento para a data e arquivo informados.
+     * As exceções de validação de data e escrita de arquivo são propagadas.
      *
-     * @throws Exception se a data for inválida ou ocorrer um erro ao gerar o arquivo.
+     * @throws Exception se a data for inválida, a saída for inválida ou ocorrer erro de I/O
      */
     @Override
-    public void execute() throws Exception {
-        for (Empregado emp : sistema.getEmpregados()) {
-            if (emp.isSindicalizado()) {
-                MembroSindicato s = emp.getSindicato();
-                dividasAnteriores.put(s.getIdMembro(), s.getDividaSindical());
-                ultimosPagamentosAnteriores.put(s.getIdMembro(), s.getUltimoDiaPago());
-            }
-        }
+    protected void doExecute() throws Exception {
         sistema.rodaFolha(data, saida);
-    }
-
-    /**
-     * Desfaz o processamento da folha de pagamento.
-     * <p>
-     * Restaura o estado da dívida sindical e da data do último pagamento dos membros
-     * do sindicato para os valores que possuíam antes da execução do comando.
-     *
-     * @throws Exception se ocorrer um erro ao localizar os empregados.
-     */
-    @Override
-    public void undo() throws Exception {
-        for (Empregado emp : sistema.getEmpregados()) {
-            if (emp.isSindicalizado()) {
-                MembroSindicato s = emp.getSindicato();
-                if (dividasAnteriores.containsKey(s.getIdMembro())) {
-                    s.setDividaSindical(dividasAnteriores.get(s.getIdMembro()));
-                    s.setUltimoDiaPago(ultimosPagamentosAnteriores.get(s.getIdMembro()));
-                }
-            }
-        }
     }
 }

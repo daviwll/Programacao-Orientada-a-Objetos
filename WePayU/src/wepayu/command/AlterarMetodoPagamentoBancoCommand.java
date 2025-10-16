@@ -1,72 +1,54 @@
 package wepayu.command;
 
-import wepayu.models.Empregado;
 import wepayu.services.Sistema;
 
 /**
  * Comando para alterar o método de pagamento de um empregado para depósito bancário.
- * <p>
- * Esta classe encapsula a ação de alterar o método de pagamento e os dados bancários associados,
- * permitindo que a operação seja executada e desfeita (undo) de forma segura, salvando e
- * restaurando todo o estado de pagamento anterior.
  *
- * @see Command
- * @see Sistema
- * @see Empregado
+ * <p>A captura/restauração de estado para undo/redo é realizada por {@link SnapshotCommand}
+ * via mementos do {@link Sistema}. Este comando apenas delega a operação a
+ * {@link Sistema#alteraEmpregadoMetodoPagamentoBanco(String, String, String, String)}.</p>
+ *
+ * @since US08
+ * @see SnapshotCommand
+ * @see Sistema#alteraEmpregadoMetodoPagamentoBanco(String, String, String, String)
  */
-public class AlterarMetodoPagamentoBancoCommand implements Command {
-    private Sistema sistema;
-    private String id;
-    private String banco, agencia, contaCorrente;
-    private String metodoAntigo, bancoAntigo, agenciaAntiga, contaAntiga;
+public class AlterarMetodoPagamentoBancoCommand extends SnapshotCommand {
+
+    private final String id;
+    private final String banco;
+    private final String agencia;
+    private final String contaCorrente;
 
     /**
-     * Constrói o comando para alterar o método de pagamento para banco.
+     * Cria o comando de alteração do método de pagamento para banco.
      *
-     * @param s A instância do sistema onde a operação será executada.
-     * @param id O ID do empregado a ser alterado.
-     * @param b O nome do novo banco.
-     * @param a O número da nova agência.
-     * @param c O número da nova conta corrente.
+     * @param sistema instância do sistema (não {@code null})
+     * @param id id do empregado
+     * @param banco nome do banco
+     * @param agencia número da agência
+     * @param contaCorrente número da conta corrente
+     * @throws NullPointerException se {@code sistema} for {@code null}
      */
-    public AlterarMetodoPagamentoBancoCommand(Sistema s, String id, String b, String a, String c) {
-        this.sistema = s;
+    public AlterarMetodoPagamentoBancoCommand(Sistema sistema,
+                                              String id,
+                                              String banco,
+                                              String agencia,
+                                              String contaCorrente) {
+        super(sistema);
         this.id = id;
-        this.banco = b;
-        this.agencia = a;
-        this.contaCorrente = c;
+        this.banco = banco;
+        this.agencia = agencia;
+        this.contaCorrente = contaCorrente;
     }
 
     /**
-     * Executa a alteração do método de pagamento.
-     * <p>
-     * Antes de executar, salva todos os dados de pagamento anteriores do empregado
-     * (método, banco, agência, conta) para permitir que a ação seja desfeita.
+     * Executa a alteração do método de pagamento para depósito bancário.
      *
-     * @throws Exception se o empregado não for encontrado.
+     * @throws Exception se o empregado não existir ou os dados bancários forem inválidos
      */
     @Override
-    public void execute() throws Exception {
-        Empregado e = sistema.getEmpregado(id);
-        this.metodoAntigo = e.getMetodoPagamento();
-        this.bancoAntigo = e.getBanco();
-        this.agenciaAntiga = e.getAgencia();
-        this.contaAntiga = e.getContaCorrente();
-
+    protected void doExecute() throws Exception {
         sistema.alteraEmpregadoMetodoPagamentoBanco(id, banco, agencia, contaCorrente);
-    }
-
-    /**
-     * Desfaz a alteração do método de pagamento, restaurando todos os dados bancários originais.
-     *
-     * @throws Exception se o empregado não for encontrado.
-     */
-    @Override
-    public void undo() throws Exception {
-        Empregado e = sistema.getEmpregado(id);
-        e.setMetodoPagamento(this.metodoAntigo);
-        e.setBanco(this.bancoAntigo);
-        e.setAgencia(this.agenciaAntiga);
-        e.setContaCorrente(this.contaAntiga);
     }
 }

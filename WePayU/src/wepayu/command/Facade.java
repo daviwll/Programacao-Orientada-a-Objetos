@@ -1,14 +1,43 @@
 package wepayu.command;
 
+import wepayu.exceptions.NaoPodeComandosAposEncerrarSistemaException;
 import wepayu.services.Sistema;
 
 /**
- * Implementa o padrão de projeto Facade para o sistema WePayU.
+ * Facade do subsistema de folha de pagamento (WePayU).
+ *
  * <p>
- * Esta classe fornece uma interface simplificada e unificada para todas as
- * funcionalidades do subsistema de folha de pagamento. É a única porta
- * de entrada para a lógica de negócio, recebendo os comandos dos testes
- * e delegando-os para as classes apropriadas ({@link Sistema} e {@link Command}s).
+ * Fornece uma interface única e simplificada para as operações de alto nível
+ * do sistema, encapsulando a orquestração entre comandos ({@link Command}),
+ * o invocador ({@link Invoker}) e o núcleo de negócios ({@link Sistema}).
+ * Esta é a “porta de entrada” usada pelos testes: recebe solicitações,
+ * cria e executa os comandos adequados e delega a lógica ao {@link Sistema}.
+ * </p>
+ *
+ * <h3>Responsabilidades</h3>
+ * <ul>
+ *   <li>Validar o estado de encerramento do sistema antes de executar ações;</li>
+ *   <li>Criar comandos e entregá-los ao {@link Invoker} para execução;</li>
+ *   <li>Expor operações de consulta que delegam diretamente ao {@link Sistema};</li>
+ *   <li>Controlar undo/redo via {@link Invoker}.</li>
+ * </ul>
+ *
+ * <h3>Ciclo de vida e estado</h3>
+ * <ul>
+ *   <li>O estado de negócio é mantido em um {@code Sistema} estático
+ *       ({@code sistemaGlobal}) para persistir entre execuções de teste;</li>
+ *   <li>Cada instância da {@code Facade} cria seu próprio {@link Invoker}
+ *       (histórico de comandos por instância);</li>
+ *   <li>O “encerramento” do sistema é controlado por um flag estático
+ *       ({@code sistemaEncerrado}), bloqueando novas ações até ser reativado.</li>
+ * </ul>
+ *
+ * <h3>Erros e exceções</h3>
+ * <p>
+ * Métodos de ação lançam {@link Exception} quando o sistema está encerrado
+ * ou quando os dados de entrada são inválidos (as validações específicas
+ * são feitas no {@link Sistema} e nos comandos).
+ * </p>
  *
  * @see Sistema
  * @see Invoker
@@ -18,7 +47,6 @@ public class Facade {
     private Sistema sistema;
     private Invoker invoker;
     private static Sistema sistemaGlobal;
-    private static Invoker invokerGlobal;
     private static boolean sistemaEncerrado = false;
 
     /**
@@ -31,10 +59,9 @@ public class Facade {
     public Facade() {
         if (Facade.sistemaGlobal == null) {
             sistemaGlobal = new Sistema();
-            invokerGlobal = new Invoker();
         }
         this.sistema = sistemaGlobal;
-        this.invoker = invokerGlobal;
+        this.invoker = new Invoker();
         sistemaEncerrado = false;
     }
 
@@ -72,7 +99,7 @@ public class Facade {
      */
     private void checkSistemaEncerrado() throws Exception {
         if (Facade.sistemaEncerrado) {
-            throw new Exception("Nao pode dar comandos depois de encerrarSistema.");
+            throw new NaoPodeComandosAposEncerrarSistemaException();
         }
     }
 
@@ -258,41 +285,147 @@ public class Facade {
         Command comando = new RodaFolhaCommand(this.sistema, data, saida);
         this.invoker.executeCommand(comando);
     }
+    /**
+     * Cria uma nova agenda de pagamentos disponível para uso nas operações do sistema.
+     * <p>
+     * Exemplos aceitos:
+     * <ul>
+     *   <li>{@code "semanal 5"} – toda sexta;</li>
+     *   <li>{@code "semanal 2 5"} – a cada 2 semanas na sexta;</li>
+     *   <li>{@code "mensal $"} – último dia útil do mês;</li>
+     *   <li>{@code "mensal 12"} – dia 12 de todo mês.</li>
+     * </ul>
+     *
+     * @param descricao descrição textual da agenda (formato válido conforme regras do {@link Sistema})
+     * @throws Exception se o sistema estiver encerrado, a descrição for inválida
+     *                   ou a agenda já existir.
+     */
+    public void criarAgendaDePagamentos(String descricao) throws Exception {
+        checkSistemaEncerrado();
+        this.sistema.criarAgendaDePagamentos(descricao);
+    }
 
     // --- Métodos de Consulta (Getters) ---
 
+    /**
+     * Retorna um atributo textual de um empregado.
+     * <p>
+     * Atributos aceitos incluem, entre outros: {@code nome}, {@code endereco}, {@code tipo},
+     * {@code salario}, {@code comissao}, {@code metodoPagamento}, {@code banco}, {@code agencia},
+     * {@code contaCorrente}, {@code sindicalizado}, {@code idSindicato}, {@code taxaSindical},
+     * {@code agendaPagamento}.
+     *
+     * @param id        ID do empregado
+     * @param atributo  nome do atributo desejado
+     * @return valor do atributo como {@code String}
+     * @throws Exception se o sistema estiver encerrado, o empregado/atributo não existir
+     *                   ou pré-condições (ex.: receber em banco / ser sindicalizado) não forem atendidas.
+     */
     public String getAtributoEmpregado(String id, String atributo) throws Exception {
         return this.sistema.getAtributoEmpregado(id, atributo);
     }
 
+    /**
+     * Busca empregados pelo nome (contém) e retorna o ID do resultado na posição informada.
+     *
+     * @param nome   termo de busca (contém)
+     * @param indice posição 1-based do resultado desejado
+     * @return ID do empregado na posição solicitada
+     * @throws Exception se o sistema estiver encerrado ou não houver resultados suficientes.
+     */
     public String getEmpregadoPorNome(String nome, int indice) throws Exception {
         return this.sistema.getEmpregadoPorNome(nome, indice);
     }
 
+    /**
+     * Obtém o total de horas trabalhadas por um horista no intervalo informado (inclusive).
+     *
+     * @param id           ID do empregado horista
+     * @param dataInicial  data inicial no formato {@code d/M/uuuu}
+     * @param dataFinal    data final no formato {@code d/M/uuuu}
+     * @return total de horas (formatado: inteiro sem casas ou com vírgula até 2 casas)
+     * @throws Exception se o sistema estiver encerrado, o empregado não for horista,
+     *                   datas forem inválidas ou {@code dataInicial} > {@code dataFinal}.
+     */
     public String getHorasTrabalhadas(String id, String dataInicial, String dataFinal) throws Exception {
         return this.sistema.getHorasTrabalhadas(id, dataInicial, dataFinal);
     }
 
+    /**
+     * Obtém as horas normais (até 8h/dia) de um horista no intervalo informado (inclusive).
+     *
+     * @param id           ID do empregado horista
+     * @param dataInicial  data inicial no formato {@code d/M/uuuu}
+     * @param dataFinal    data final no formato {@code d/M/uuuu}
+     * @return total de horas normais (formatação textual conforme regras do sistema)
+     * @throws Exception se o sistema estiver encerrado, o empregado não for horista,
+     *                   datas forem inválidas ou {@code dataInicial} > {@code dataFinal}.
+     */
     public String getHorasNormaisTrabalhadas(String id, String dataInicial, String dataFinal) throws Exception {
         return this.sistema.getHorasNormaisTrabalhadas(id, dataInicial, dataFinal);
     }
 
+    /**
+     * Obtém as horas extras (acima de 8h/dia) de um horista no intervalo informado (inclusive).
+     *
+     * @param id           ID do empregado horista
+     * @param dataInicial  data inicial no formato {@code d/M/uuuu}
+     * @param dataFinal    data final no formato {@code d/M/uuuu}
+     * @return total de horas extras (formatação textual conforme regras do sistema)
+     * @throws Exception se o sistema estiver encerrado, o empregado não for horista,
+     *                   datas forem inválidas ou {@code dataInicial} > {@code dataFinal}.
+     */
     public String getHorasExtrasTrabalhadas(String id, String dataInicial, String dataFinal) throws Exception {
         return this.sistema.getHorasExtrasTrabalhadas(id, dataInicial, dataFinal);
     }
 
+    /**
+     * Obtém o total de vendas realizadas por um empregado comissionado no período.
+     *
+     * @param id           ID do empregado comissionado
+     * @param dataInicial  data inicial no formato {@code d/M/uuuu}
+     * @param dataFinal    data final no formato {@code d/M/uuuu}
+     * @return soma das vendas no período, formatada com vírgula e 2 casas
+     * @throws Exception se o sistema estiver encerrado, o empregado não for comissionado,
+     *                   datas forem inválidas ou {@code dataInicial} > {@code dataFinal}.
+     */
     public String getVendasRealizadas(String id, String dataInicial, String dataFinal) throws Exception {
         return this.sistema.getVendasRealizadas(id, dataInicial, dataFinal);
     }
 
+    /**
+     * Obtém a soma das taxas de serviço do sindicato de um empregado no período informado.
+     *
+     * @param emp          ID do empregado (deve estar sindicalizado)
+     * @param dataInicial  data inicial no formato {@code d/M/uuuu}
+     * @param dataFinal    data final no formato {@code d/M/uuuu}
+     * @return total das taxas de serviço, formatado com vírgula e 2 casas
+     * @throws Exception se o sistema estiver encerrado, o empregado não for sindicalizado,
+     *                   datas forem inválidas ou {@code dataInicial} > {@code dataFinal}.
+     */
     public String getTaxasServico(String emp, String dataInicial, String dataFinal) throws Exception {
         return this.sistema.getTaxasServico(emp, dataInicial, dataFinal);
     }
 
+    /**
+     * Calcula o total bruto da folha de pagamento para a data informada.
+     * <p>
+     * Respeita as regras de pagamento por tipo (horista/sextas; comissionado/quinzenal;
+     * assalariado/último dia útil) e agendas personalizadas cadastradas.
+     *
+     * @param data data de referência no formato {@code d/M/uuuu}
+     * @return total da folha formatado com vírgula e 2 casas decimais
+     * @throws Exception se o sistema estiver encerrado ou a data for inválida.
+     */
     public String totalFolha(String data) throws Exception {
         return this.sistema.totalFolha(data);
     }
 
+    /**
+     * Retorna a quantidade atual de empregados cadastrados no sistema.
+     *
+     * @return número de empregados como {@code String} (compatível com a suíte de testes).
+     */
     public String getNumeroDeEmpregados() {
         return String.valueOf(this.sistema.getNumeroDeEmpregados());
     }

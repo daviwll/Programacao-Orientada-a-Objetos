@@ -1,36 +1,35 @@
 package wepayu.command;
 
-import wepayu.models.CartaoDePonto;
-import wepayu.models.Empregado;
-import wepayu.models.Horista;
 import wepayu.services.Sistema;
 
 /**
  * Comando para lançar um cartão de ponto para um empregado horista.
- * <p>
- * Esta classe encapsula a ação de adicionar um cartão de ponto, permitindo que a operação
- * seja executada e desfeita (undo).
  *
- * @see Command
- * @see Sistema
- * @see Horista
- * @see CartaoDePonto
+ * <p>A captura/restauração de estado para undo/redo é feita por {@link SnapshotCommand} via
+ * mementos do {@link Sistema}. Este comando apenas delega a operação a
+ * {@link Sistema#lancaCartao(String, String, String)}.</p>
+ *
+ * @since US08
+ * @see SnapshotCommand
+ * @see Sistema#lancaCartao(String, String, String)
  */
-public class LancarCartaoCommand implements Command {
-    private Sistema sistema;
-    private String id, data, horas;
-    private CartaoDePonto cartaoAdicionado;
+public class LancarCartaoCommand extends SnapshotCommand {
+
+    private final String id;
+    private final String data;
+    private final String horas;
 
     /**
-     * Constrói o comando para lançar um cartão de ponto.
+     * Cria o comando de lançamento de cartão de ponto.
      *
-     * @param sistema A instância do sistema onde a operação será executada.
-     * @param id O ID do empregado horista.
-     * @param data A data do cartão de ponto (ex: "dd/MM/yyyy").
-     * @param horas O número de horas trabalhadas no dia.
+     * @param sistema instância do sistema (não {@code null})
+     * @param id id do empregado horista
+     * @param data data do cartão no formato {@code d/M/uuuu}
+     * @param horas quantidade de horas trabalhadas no dia
+     * @throws NullPointerException se {@code sistema} for {@code null}
      */
     public LancarCartaoCommand(Sistema sistema, String id, String data, String horas) {
-        this.sistema = sistema;
+        super(sistema);
         this.id = id;
         this.data = data;
         this.horas = horas;
@@ -38,27 +37,11 @@ public class LancarCartaoCommand implements Command {
 
     /**
      * Executa o lançamento do cartão de ponto.
-     * <p>
-     * Chama o método correspondente em {@link Sistema} e guarda a referência
-     * do objeto {@link CartaoDePonto} criado para ser usado pelo método {@link #undo()}.
      *
-     * @throws Exception se o empregado não for encontrado, não for horista, ou os dados forem inválidos.
+     * @throws Exception se o empregado não for horista ou se a data/horas forem inválidas
      */
     @Override
-    public void execute() throws Exception {
-        this.cartaoAdicionado = sistema.lancaCartao(this.id, this.data, this.horas);
-    }
-
-    /**
-     * Desfaz o lançamento do cartão de ponto, removendo-o do registro do empregado.
-     *
-     * @throws Exception se o empregado não for encontrado.
-     */
-    @Override
-    public void undo() throws Exception {
-        Empregado empregado = sistema.getEmpregado(this.id);
-        if (empregado instanceof Horista) {
-            ((Horista) empregado).removeCartaoDePonto(this.cartaoAdicionado);
-        }
+    protected void doExecute() throws Exception {
+        sistema.lancaCartao(id, data, horas);
     }
 }

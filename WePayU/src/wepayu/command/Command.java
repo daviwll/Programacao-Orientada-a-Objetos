@@ -26,4 +26,22 @@ public interface Command {
      * @throws Exception se ocorrer um erro ao tentar reverter a ação.
      */
     void undo() throws Exception;
+
+    /**
+     * Refaz a ação previamente desfeita por {@link #undo()}.
+     * <p>
+     * Implementação padrão: chama novamente {@link #execute()}.
+     * Substitua este método quando o comando não for idempotente ou quando
+     * a ação de refazer exigir lógica diferente de simplesmente executar de novo
+     * (por exemplo, quando {@code execute()} consome estado que já foi utilizado).
+     * </p>
+     *
+     * @throws Exception se ocorrer um erro ao refazer a ação.
+     * @see #execute()
+     * @see #undo()
+     */
+    default void redo() throws Exception
+    {
+        execute();
+    }
 }

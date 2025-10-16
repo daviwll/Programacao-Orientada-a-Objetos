@@ -21,6 +21,7 @@ public abstract class Empregado implements Cloneable {
     private String banco;
     private String agencia;
     private String contaCorrente;
+    private String agendaPagamento;
 
     /**
      * Construtor base para inicializar um novo empregado.
@@ -49,13 +50,17 @@ public abstract class Empregado implements Cloneable {
     @Override
     public Empregado clone() {
         try {
-            Empregado cloned = (Empregado) super.clone();
-            if (this.sindicato != null) {
-                cloned.sindicato = this.sindicato.clone();
+            Empregado c = (Empregado) super.clone();
+            if (this.getSindicato() != null) {
+                c.setSindicato(this.getSindicato().clone());
             }
-            return cloned;
+            c.setMetodoPagamento(this.getMetodoPagamento());
+            c.setBanco(this.getBanco());
+            c.setAgencia(this.getAgencia());
+            c.setContaCorrente(this.getContaCorrente());
+            return c;
         } catch (CloneNotSupportedException e) {
-            throw new AssertionError(); // Não deve acontecer, pois a classe é Cloneable
+            throw new AssertionError(e);
         }
     }
 
@@ -73,9 +78,30 @@ public abstract class Empregado implements Cloneable {
      * Retorna o endereço do empregado.
      * @return o endereço do empregado.
      */
+
     public String getEndereco() {
         return this.endereco;
     }
+    /**
+     * Retorna a descrição da agenda de pagamento do empregado.
+     * <p>
+     * Exemplos de formato aceito: {@code "semanal 5"}, {@code "semanal N D"},
+     * {@code "mensal $"} (último dia útil) ou {@code "mensal N"} (1..28).
+     *
+     * @return a agenda de pagamento atual ou {@code null} se ainda não definida
+     */
+
+    public String getAgendaPagamento() { return agendaPagamento; }
+    /**
+     * Define a agenda de pagamento do empregado.
+     * <p>
+     * Esta chamada não valida a sintaxe da agenda; a validação é responsabilidade
+     * da camada de serviço (ex.: {@code Sistema.criarAgendaDePagamentos(...)}).
+     *
+     * @param agenda descrição da agenda (ex.: {@code "semanal 5"}, {@code "semanal 2 5"},
+     *               {@code "mensal $"}, {@code "mensal 15"})
+     */
+    public void setAgendaPagamento(String agenda) { this.agendaPagamento = agenda; }
 
     /**
      * Retorna o tipo do empregado (ex: "horista").
