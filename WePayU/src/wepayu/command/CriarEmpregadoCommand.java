@@ -1,12 +1,7 @@
 package wepayu.command;
 
-import wepayu.models.Empregado;
 import wepayu.services.Sistema;
 
-/**
- * Comando para criar um empregado no sistema.
- * Permite execução, undo e redo.
- */
 /**
  * Comando para criar um empregado no sistema.
  * Usa SnapshotCommand para suportar undo/redo via mementos.
